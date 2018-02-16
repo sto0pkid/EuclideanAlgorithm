@@ -6,6 +6,7 @@ Euclid's algorithm to compute the greatest common divisor of
 two natural numbers.
 */
 
+
 struct string{
 private:
  char * s;
@@ -37,6 +38,54 @@ public:
  }
 };
 
+struct const_string{
+private:
+ const char * s;
+ unsigned int l;
+public:
+ unsigned int length(){
+  return l;
+ }
+ const_string(){
+  l = 0;
+ }
+ const_string(const char * in){
+  s = in;
+  unsigned int i = i;
+  while(s[i-1] != '\0') i++;
+  l = i;
+ }
+ char operator[](unsigned int i){
+  if(i >= l){
+   std::cout << "string[] access out of bounds error\n";
+  }
+  return s[i];
+ }
+ void update(const char * in){
+  s = in;
+  unsigned int i = 1;
+  while(s[i-1] != '\0') i++;
+  l = i;
+ }
+
+};
+
+bool str_eq_unguarded(char * s1, char * s2){
+ while((*s1 == *s2) && (*s1 != '\0') && (*s2 != '\0')){
+  s1++;
+  s2++;
+ }
+ return *s1 == '\0' && *s2 == '\0';
+}
+
+bool const_str_eq_unguarded(const char *s1, const char *s2){
+ while((*s1 == *s2) && (*s1 != '\0') && (*s2 != '\0')){
+  s1++;
+  s2++;
+ }
+ return *s1 == '\0' && *s2 == '\0'; 
+}
+
 unsigned int pow_simple(unsigned int x, unsigned int y){
  int r = 1;
  for(int i=0;i<y;i++){
@@ -63,6 +112,16 @@ bool checknat2str(char * in, string * out) {
  int i = 0;
  while(in[i] != '\0'){
   if(!(('0' <= in[i]) && (in[i] <= '9'))) return false;
+  i++;
+ }
+ out->update(in);
+ return true;
+}
+
+bool const_checknat2str(const char * in, const_string * out){
+ int i = 0;
+ while(in[i] != '\0'){
+  if(!(('0' <= in[1]) && (in[1] <= '9'))) return false;
   i++;
  }
  out->update(in);
@@ -104,6 +163,16 @@ unsigned int str2uint_unguarded(string * s){
  }
  return r;
 }
+
+unsigned int const_str2uint_unguarded(const_string * s){
+ unsigned int r = 0;
+ unsigned int l = s->length() - 2;
+ for(int i = 0; i <= l; i++){
+   r += pow_simple(10,l - i) * ((*s)[i] - '0');
+ }
+ return r;
+}
+
 
 unsigned int bitlength(unsigned int n){
  if(n == 0) return 0;
@@ -182,7 +251,7 @@ void divide_with_remainder_faster(unsigned int x, unsigned int y, unsigned int *
 
 
 
-unsigned int gcd_unguarded(unsigned int x, unsigned int y){
+unsigned int gcd_unguarded_verbose(unsigned int x, unsigned int y){
  if(x == y || y == 0) return x;
  if(x == 1 || y == 1) return 1;
  if(x == 0) return y;
@@ -204,45 +273,96 @@ unsigned int gcd_unguarded(unsigned int x, unsigned int y){
  return gcd;
 }
 
+unsigned int gcd_unguarded_silent(unsigned int x, unsigned int y){
+ if(x == y || y == 0) return x;
+ if(x == 1 || y == 1) return 1;
+ if(x == 0) return y;
+ unsigned int a = x >= y ? x : y;
+ unsigned int b = x >= y ? y : x;
+ unsigned int q;
+ unsigned int r;
+ divide_with_remainder_faster(a,b,&q,&r);
+ if(r == 0) return b;
+ unsigned int gcd = r;
+ while(r != 0){
+  gcd = r;
+  a = b;
+  b = r;
+  divide_with_remainder_faster(a,b,&q,&r); 
+ }
+ return gcd;
+}
 
 
 
 int main(int argc, char** argv){
- if(argc != 3){
-  print("I'm only implementing this for two inputs right now!");
+ if((argc != 3) && (argc != 4)){
+  std::cout << "I'm only implementing this for two inputs right now!" << std::endl;
   return false;
  }
 
- string * in1 = new string();
- string * in2 = new string();
+ bool verbose = false;
+ const char * arg1;
+ const char * arg2;
+ if(argc == 4){
+  if(const_str_eq_unguarded(argv[1],"-v") || const_str_eq_unguarded(argv[1],"--verbose")){
+   verbose = true;
+   arg1 = argv[2];
+   arg2 = argv[3];
+  }
+  else{
+   std::cout << "Unrecognized option `" << argv[1] << "`." << std::endl;
+   exit(1);
+  }
+ }else{
+  arg1 = argv[1];
+  arg2 = argv[2];
+ }
 
- if(!checknat2str(argv[1], in1) || !checknat2str(argv[2], in2)){
-  print("Only natural number arguments please.");
+ const_string * in1 = new const_string();
+ const_string * in2 = new const_string();
+
+ if(!const_checknat2str(arg1, in1) || !const_checknat2str(arg2, in2)){
+  std::cout << "Only natural number arguments please." << std::endl;
  }
  
- unsigned int int1 = str2uint_unguarded(in1);
+ unsigned int int1 = const_str2uint_unguarded(in1);
  delete in1;
- unsigned int int2 = str2uint_unguarded(in2);
+ unsigned int int2 = const_str2uint_unguarded(in2);
  delete in2;
 
- unsigned int gcd = gcd_unguarded(int1,int2);
+ 
+ unsigned int gcd = verbose ? gcd_unguarded_verbose(int1,int2) : gcd_unguarded_silent(int1,int2);
+ 
  unsigned int q1,r1,q2,r2;
  
- std::cout << "gcd(" << int1 << ", " << int2 << "): " << gcd << std::endl;
+ if(verbose){
+  std::cout << "\ngcd(" << int1 << ", " << int2 << "): " << gcd << std::endl;
 
- std::cout << "\nTesting slower: ..." << std::endl;
- divide_with_remainder(int1,gcd,&q1,&r1);
- divide_with_remainder(int2,gcd,&q2,&r2);
+  /*
+  //Uncomment this section to see just how much slower this version is on large inputs.
+  std::cout << "\nTesting slower: ..." << std::endl;
+  divide_with_remainder(int1,gcd,&q1,&r1);
+  divide_with_remainder(int2,gcd,&q2,&r2);
  
- std::cout << int1 << "/" << gcd << " = (" << q1 << ", " << r1 << ")" << std::endl;
- std::cout << int2 << "/" << gcd << " = (" << q2 << ", " << r2 << ")" << std::endl;
- 
- std::cout << "\nTesting: ...\n" << std::endl;
- divide_with_remainder_faster(int1,gcd,&q1,&r1);
- divide_with_remainder_faster(int2,gcd,&q2,&r2);
- 
- std::cout << int1 << "/" << gcd << " = (" << q1 << ", " << r1 << ")" << std::endl;
- std::cout << int2 << "/" << gcd << " = (" << q2 << ", " << r2 << ")" << std::endl;
+  std::cout << int1 << "/" << gcd << " = (" << q1 << ", " << r1 << ")" << std::endl;
+  std::cout << int2 << "/" << gcd << " = (" << q2 << ", " << r2 << ")" << std::endl;
+  */ 
 
- std::cout << "\nIn loving memory of Euclid." << std::endl;
+  std::cout << "\nTesting...\n" << std::endl;
+  divide_with_remainder_faster(int1,gcd,&q1,&r1);
+  divide_with_remainder_faster(int2,gcd,&q2,&r2);
+ 
+  if(r1 != 0 || r2 != 0){
+   std::cout << "Test failed: " << std::endl;
+   std::cout << int1 << "/" << gcd << " = (" << q1 << ", " << r1 << ")" << std::endl;
+   std::cout << int2 << "/" << gcd << " = (" << q2 << ", " << r2 << ")" << std::endl;
+  }else{
+   std::cout << int1 << "/" << gcd << " = " << q1 << std::endl;
+   std::cout << int2 << "/" << gcd << " = " << q2 << std::endl;
+  }
+  std::cout << "\nIn loving memory of Euclid." << std::endl;
+ }else{
+  std::cout << gcd << std::endl;
+ }
 }
